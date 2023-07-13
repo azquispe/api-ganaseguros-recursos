@@ -25,7 +25,7 @@ public interface IAsientoDetDao extends JpaRepository<AsientoDetTemEntity,Long> 
             "  END as amount_haber\n" +
             ",ti.descripcion_concepto , ti.descripcion_cuenta  ,  ti.debe_haber  from erp.asiento_det_tem ad \n" +
             "left join erp.asiento_cab_tem ac on ac.asiento_cab_tem_id  = ad.asiento_cab_tem_id  \n" +
-            "left join erp.tabla_intermedia ti on ti.cod_reporte = ac.cod_reporte  and ti.cod_ramo = ac.cod_ramo  and ti.codigo_concepto = lpad(ad.codigo_concepto, 5, '0')  \n" +
+            "left join erp.tabla_intermedia ti on ti.cod_reporte = ac.cod_reporte  and ti.cod_ramo = ac.cod_ramo  and lpad(ti.codigo_concepto,5,'0') = lpad(ad.codigo_concepto, 5, '0')  \n" +
             "where ad.estado_id = 1000 and ad.asiento_cab_tem_id  IN  (:pAsientosCabId)", nativeQuery = true)
     List<Object[]> findAsientosDetTemByAsientosCabId(List<Long> pAsientosCabId);
 

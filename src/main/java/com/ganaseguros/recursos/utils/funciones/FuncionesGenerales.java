@@ -23,4 +23,31 @@ public class FuncionesGenerales {
 
         return sb.toString();
     }
+    public static  Double obtenerMonto(String pMonto){
+      if( isNumeric(pMonto) || isDecimal(pMonto)){
+          return new Double(pMonto);
+      }else{
+          return new Double(0);
+      }
+    }
+    public static boolean isNumeric(String s)
+    {
+        if (s == null || s.trim().equals("")) {
+            return false;
+        }
+        return s.trim().chars().allMatch(Character::isDigit);
+    }
+    public static boolean isDecimal(String s)
+    {
+        try
+        {
+            Double.parseDouble(s);
+            return true;
+        }
+        catch(NumberFormatException nfe)
+        {
+            return false;
+        }
+    }
+
 }

@@ -23,13 +23,41 @@ public interface IAsientoCabDao extends JpaRepository<AsientoCabTemEntity,Long> 
             "where ac.estado_id = 1000 and ac.usuario_registro_id = :pUsuarioId order by 1 asc ", nativeQuery = true)
     List<Object[]> findReportesTemByUsuarioId(Long pUsuarioId);
 
-    @Query(value = "select ac.asiento_cab_tem_id , ac.cod_reporte,ac.cod_ramo , ti2.ramo ,\n" +
-            "ac.tax_date, ac.due_date, ac.reference_date,ac.nroasiento_sap,ac.json_enviado_sap,ac.json_respuesta_sap\n" +
+    @Query(value = "select \n" +
+            "ac.asiento_cab_tem_id , \n" +
+            "ac.cod_reporte,\n" +
+            "ac.cod_ramo , \n" +
+            "ti2.ramo ,\n" +
+            "ac.tipo_documento, --saocio negocio desde aqui\n" +
+            "ac.numero_documento,\t\n" +
+            "ac.complemento,\t\n" +
+            "ac.extension,\t\n" +
+            "ac.primer_nombre_razon_social,\t\n" +
+            "ac.segundo_nombre,\t\n" +
+            "ac.apellido_paterno,\n" +
+            "ac.apellido_materno,\t\n" +
+            "ac.apellido_casado,\n" +
+            "ac.group_code,\n" +
+            "ac.vat_group,\n" +
+            "ac.debitor_account,\t\n" +
+            "ac.group_num,\t\n" +
+            "ac.numero_siniestro,\n" +
+            "ac.numero_poliza,\n" +
+            "ac.monto_siniestro_pagar,\n" +
+            "ac.codigo_autorizacion,\n" +
+            "ac.nro_factura,\n" +
+            "ac.siniestro_id,\n" +
+            "ac.tax_date, \n" +
+            "ac.due_date, \n" +
+            "ac.reference_date,\n" +
+            "ac.nroasiento_sap,\n" +
+            "ac.json_enviado_sap,\n" +
+            "ac.json_respuesta_sap, -- hasta aqui \n" +
+            "ac.tipo_reporte_id, \n"+
+            "ac.nombre_archivo \n"+
             "from erp.asiento_cab_tem ac \n" +
             "inner join \n" +
-            "(select ti.cod_reporte, ti.nombre_reporte,ti.cod_ramo,ti.ramo  from erp.tabla_intermedia ti \n" +
-            "where ti.estado_id  = 1000\n" +
-            "group by ti.cod_reporte, ti.nombre_reporte ,ti.cod_ramo,ti.ramo order by 1 asc) ti2\n" +
+            "(select ti.cod_reporte, ti.nombre_reporte,ti.cod_ramo,ti.ramo  from erp.tabla_intermedia ti where ti.estado_id  = 1000  group by ti.cod_reporte, ti.nombre_reporte ,ti.cod_ramo,ti.ramo order by 1 asc) ti2\n" +
             "on ac.cod_reporte = ti2.cod_reporte and ac.cod_ramo  = ti2.cod_ramo\n" +
             "where ac.usuario_registro_id = 1000 and ac.estado_id = 1000 and ac.cod_reporte = :pReporteId  order by 3 asc", nativeQuery = true)
     List<Object[]> findAsientoCabTemByReporteId(Long pReporteId);

@@ -76,7 +76,7 @@ public class ReportesService {
 
             for (ColumnasReporteDto objRepo: lstColumnasReporteDtoAgrupado) {
                 for (ViewRamoEntity objRamo:lstRamos) {
-                    Map<String, Object> request = this.construirRequest(objRepo.getCodReporteCore(), objRamo.getRramoId().toString(), objRepo.getTipoMoneda(),pFechaInicio,pFechaFin );
+                    Map<String, Object> request = this.construirRequest(objRepo.getNombreReporte(), objRamo.getRramoId().toString(), objRepo.getTipoMoneda(),pFechaInicio,pFechaFin );
                     res = reportesRestTemplate.obtieneReporteCore(token,request);
                     if(!res.getCodigo().equals("1000")){
                         continue;

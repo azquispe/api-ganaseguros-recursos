@@ -109,7 +109,9 @@ public class TablaIntermediaService {
         List<TablaIntermediaDto> lstDatosIntermedio = new ArrayList();
         try
         {
-            String path = dirArchivoContables+"/TABLA_INTERMEDIA.xlsx";
+            //String path = dirArchivoContables+"/Observaciones Tabla Intermedia V3.3.xlsx";
+            String path = dirArchivoContables+"/Tabla intermedia V 4.2 10.07.23.xlsx";
+
             FileInputStream file = new FileInputStream(new File(path));
 
             //Create Workbook instance holding reference to .xlsx file

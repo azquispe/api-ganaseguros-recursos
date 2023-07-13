@@ -52,14 +52,14 @@ public class EnvioAsientoRestTemplate {
 
     }
 
-    public ResponseDto enviarErpAsientoContable(String token, Map<String, Object> request) {
+    public ResponseDto enviarErpAsientoContable(String endPoint, String token, Map<String, Object> request) {
         ResponseDto res = new ResponseDto();
         try {
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Bearer " + token);
             HttpEntity<Map> body = new HttpEntity<>(request, headers);
-            ResponseEntity<Map> resultMap = restTemplate.postForEntity(apiBaseErp + "/JournalEntry/GuardarAsiento", body, Map.class);
+            ResponseEntity<Map> resultMap = restTemplate.postForEntity(apiBaseErp + endPoint, body, Map.class);
             /*res.setCodigo(ConstDiccionarioMensaje.COD1000);
             res.setMensaje(ConstDiccionarioMensaje.COD1000_MENSAJE);*/
 

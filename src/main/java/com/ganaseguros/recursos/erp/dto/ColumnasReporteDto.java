@@ -10,28 +10,27 @@ public class ColumnasReporteDto {
     private Long tipoReporteId;
     private String tipoReporte;
     private Long codReporte;
-    private String codReporteCore;
+    private String nombreColumnaExcel;
     private String nombreReporte;
     private String tipoMoneda;
     private String tipo;
     private Long codConcepto;
     private Long colummaExcel;
-    private String colummaCore;
+
 
 
     public ColumnasReporteDto(Long columnaReporteId, Long tipoReporteId,
-                              String tipoReporte, Long codReporte,String codReporteCore,
-                              String nombreReporte,String tipoMoneda, Long codConcepto, Long colummaExcel,String colummaCore) {
+                              String tipoReporte, Long codReporte,String nombreColumnaExcel,
+                              String nombreReporte,String tipoMoneda, Long codConcepto, Long colummaExcel) {
         this.columnaReporteId = columnaReporteId;
         this.tipoReporteId = tipoReporteId;
         this.tipoReporte = tipoReporte;
         this.codReporte = codReporte;
-        this.codReporteCore = codReporteCore;
+        this.nombreColumnaExcel = nombreColumnaExcel;
         this.nombreReporte = nombreReporte;
         this.tipoMoneda = tipoMoneda;
         this.codConcepto = codConcepto;
         this.colummaExcel = colummaExcel;
-        this.colummaCore = colummaCore;
     }
 
     public ColumnasReporteDto() {

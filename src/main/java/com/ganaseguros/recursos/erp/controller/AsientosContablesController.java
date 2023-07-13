@@ -70,11 +70,11 @@ public class AsientosContablesController {
         response.put("mensaje", res.getMensaje());
         return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
     }
-    @PostMapping("/v1/enviar-erp-asientos")
-    public ResponseEntity<?> enviarErpAsientos( @RequestBody RequestAsientoDto requestAsientoDto ) {
+    @PostMapping("/v1/enviar-erp-asientos/{pTipoReporteId}")
+    public ResponseEntity<?> enviarErpAsientos( @PathVariable Long pTipoReporteId,@RequestBody RequestAsientoDto requestAsientoDto ) {
         Map<String, Object> response = new HashMap<>();
         ResponseDto token = asientosContablesService.obtenerToken();
-        ResponseDto res = asientosContablesService.enviarErpAsientoContable(token,requestAsientoDto);
+        ResponseDto res = asientosContablesService.enviarErpAsientoContable(pTipoReporteId,token,requestAsientoDto);
         response.put("codigoMensaje", res.getCodigo());
         response.put("mensaje", res.getMensaje());
         if(res.getCodigo().equals("1"))

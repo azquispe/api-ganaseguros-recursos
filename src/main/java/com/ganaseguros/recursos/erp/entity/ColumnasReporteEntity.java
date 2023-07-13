@@ -19,17 +19,14 @@ public class ColumnasReporteEntity {
     @Column(name = "cod_reporte")
     private Long codReporte;
 
-    @Column(name = "cod_reporte_core")
-    private String codReporteCore;
+    @Column(name = "nombre_columna_excel")
+    private String nombreColumnaExcel;
 
     @Column(name = "cod_concepto")
     private Long codConcepto;
 
     @Column(name = "columma_excel")
     private Long colummaExcel;
-
-    @Column(name = "columma_core")
-    private String colummaCore;
 
     @Column(name = "estado_id")
     private Long estadoId;

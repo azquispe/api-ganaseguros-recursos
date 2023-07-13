@@ -27,6 +27,8 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.lang.Integer.parseInt;
+
 @Service
 public class AsientosContablesService {
 
@@ -233,7 +235,10 @@ public class AsientosContablesService {
                 Row row;
                 contadorFila = 0;
                 List<FilaTablaIntermediaDto> lstFilaTablaIntermediaDto = new ArrayList<>();
+                List<FilaSocioNegocioDto> lstFilaSocioNegocioDto = new ArrayList<>();
+
                 FilaTablaIntermediaDto filaTablaIntermediaDto;
+                FilaSocioNegocioDto filaSocioNegocioDto;
                 codRepo = 0L;
                 while (rowIterator.hasNext()) { // recorre fila
                     row = rowIterator.next();
@@ -259,6 +264,8 @@ public class AsientosContablesService {
                     contadorColumna = 0;
                     codRamo = 0L;
                     List<Long> lstCodigoConcepto = new ArrayList<>();
+                    List<String> lstNombreColumnaExcel = new ArrayList<>();
+
                     while (cellIterator.hasNext()) { // recorre columna                                                                                                                                while (cellIterator.hasNext()) { // recorre columna
                         celda = cellIterator.next();
                         switch (contadorColumna) {
@@ -270,7 +277,7 @@ public class AsientosContablesService {
                                 break;
                             default:
                                 int columnaExcel = contadorColumna - 1;
-                                if (contadorFila == 3) {
+                                if (contadorFila == 3) { // obtiene cod concepto
                                     lstCodigoConcepto = this.obtieneCodigoConcepto(lstColumnasReporte, columnaExcel, codRepo.intValue());
                                     for (Long codConcep : lstCodigoConcepto) {
                                         filaTablaIntermediaDto = new FilaTablaIntermediaDto();
@@ -278,25 +285,53 @@ public class AsientosContablesService {
                                         filaTablaIntermediaDto.setColumnaExcel(contadorColumna - 1);
                                         lstFilaTablaIntermediaDto.add(filaTablaIntermediaDto);
                                     }
+
+                                    lstNombreColumnaExcel = this.obtieneNombreColumnaExcel(lstColumnasReporte, columnaExcel, codRepo.intValue());
+                                    for (String nombreColumnaExcel : lstNombreColumnaExcel) {
+                                        filaSocioNegocioDto = new FilaSocioNegocioDto();
+                                        filaSocioNegocioDto.setNombreColumnaExcel(nombreColumnaExcel + "");
+                                        filaSocioNegocioDto.setColumnaExcel(contadorColumna - 1);
+                                        lstFilaSocioNegocioDto.add(filaSocioNegocioDto);
+                                    }
+
                                 }
 
                                 boolean existeColumna = !lstColumnasReporte.stream().filter(r -> r.getColummaExcel().intValue() == columnaExcel).collect(Collectors.toList()).isEmpty();
-                                if (contadorFila > 3 && existeColumna) {
-                                    lstCodigoConcepto = this.obtieneCodigoConcepto(lstColumnasReporte, columnaExcel, codRepo.intValue());
 
+                                if (contadorFila > 3 && existeColumna) { // obtiene monto
+                                    lstCodigoConcepto = this.obtieneCodigoConcepto(lstColumnasReporte, columnaExcel, codRepo.intValue());
                                     for (Long codConcep : lstCodigoConcepto) {
                                         String monto = "0";
                                         try {
                                             monto = celda.getStringCellValue();
                                         } catch (Exception ex) {
-                                            monto = celda.getNumericCellValue() + "";
+
+                                            try{
+                                                monto = celda.getNumericCellValue() + "";
+                                            }catch (Exception e){
+                                                System.out.println(e.toString());
+                                            }
                                         } finally {
-                                            lstFilaTablaIntermediaDto = this.modificarMonto(lstFilaTablaIntermediaDto, codConcep, monto);
+                                            lstFilaTablaIntermediaDto = this.modificarMonto(lstFilaTablaIntermediaDto, codConcep, monto,columnaExcel);
                                         }
 
                                     }
+                                    lstNombreColumnaExcel = this.obtieneNombreColumnaExcel(lstColumnasReporte, columnaExcel, codRepo.intValue());
+                                    for (String nombreColumnaExcel : lstNombreColumnaExcel) {
+                                        String valor = "0";
+                                        try {
+                                            valor = celda.getStringCellValue();
+                                        } catch (Exception ex) {
+                                            try{
+                                                valor = celda.getNumericCellValue() + "";
+                                            }catch (Exception e){
+                                                System.out.println(e.toString());
+                                            }
+                                        } finally {
+                                            lstFilaSocioNegocioDto = this.modificarValor(lstFilaSocioNegocioDto, nombreColumnaExcel, valor,columnaExcel);
+                                        }
+                                    }
                                 }
-
                         }
                         contadorColumna++;
                         System.out.println("columna: " + contadorColumna);
@@ -317,37 +352,24 @@ public class AsientosContablesService {
                         if (lstRes.isEmpty()) {
                             mensaje = mensaje + " no existe registros en la tabla intermedia \n ";
                         }
+                        AsientoCabTemEntity insertCab = generarCabTemEntity(codRepo,codigoRamo,pUsuarioId,pTipoReporteId,file.getOriginalFilename(),lstFilaSocioNegocioDto);
+                        try{
+                            iAsientoCabDao.save(insertCab);
+                        }catch (Exception e){
+                            System.out.println(e.toString());
+                        }
 
-
-                        AsientoCabTemEntity insertCab = new AsientoCabTemEntity();
-                        insertCab.setCodReporte(codRepo);
-                        insertCab.setCodRamo(codigoRamo);
-                        insertCab.setTaxDate("2023-03-01");
-                        insertCab.setDueDate("2023-03-01");
-                        insertCab.setReferenceDate("2023-03-01");
-                        insertCab.setUsuarioRegistroId(pUsuarioId);
-                        insertCab.setTipoReporteId(pTipoReporteId);
-                        insertCab.setNombreArchivo(file.getOriginalFilename());
-                        insertCab.setFechaRegistro(new Date());
-                        insertCab.setEstadoId(1000L);
-                        iAsientoCabDao.save(insertCab);
                         List<AsientoDetTemEntity> insertDetList = new ArrayList<>();
                         AsientoDetTemEntity insertDet;
                         for (FilaTablaIntermediaDto objFila : lstFilaTablaIntermediaDto) {
                             String codConcepto = FuncionesGenerales.padLeftZeros(objFila.getCodigoConcepto(), 5);
-                            List<TablaIntermediaEntity> lstRes2 = lstRes.stream().filter(l -> codConcepto.equals(l.getCodigoConcepto())).collect(Collectors.toList());
+                            List<TablaIntermediaEntity> lstRes2 = lstRes.stream().filter(l -> parseInt(codConcepto)==(parseInt(l.getCodigoConcepto()))).collect(Collectors.toList());
                             if (lstRes2.size() == 1) {
                                 insertDet = new AsientoDetTemEntity();
                                 insertDet.setAsientoCabTemId(insertCab.getAsientoCabTemId());
                                 insertDet.setCodigoConcepto(objFila.getCodigoConcepto());
                                 insertDet.setColumnaExcel(objFila.getColumnaExcel());
-                                try {
-                                    insertDet.setAmount(new Double(objFila.getMonto()));
-                                } catch (Exception ex) {
-                                    if(!objFila.getMonto().trim().equals(""))
-                                        mensaje = mensaje + "el valor: "+objFila.getMonto()+" no se epude convertir en Numero (tipo Moneda) para el reporte :"+codRepo+" y ramo: "+codRamo+"\n";
-                                    insertDet.setAmount(new Double(0));
-                                }
+                                insertDet.setAmount(FuncionesGenerales.obtenerMonto(objFila.getMonto()));
                                 insertDet.setEstadoId(1000L);
                                 insertDetList.add(insertDet);
                             }
@@ -355,7 +377,12 @@ public class AsientosContablesService {
                         if (insertDetList.isEmpty()) {
                             mensaje = mensaje + " no existe asientos para codigo reporte: " + codigoRepo + " y ramo: " + codigoRamo + " \n";
                         }
-                        iAsientoDetDao.saveAll(insertDetList);
+                        try{
+                            iAsientoDetDao.saveAll(insertDetList);
+                        }catch (Exception ex){
+                            System.out.println(ex.toString());
+                        }
+
                     }
                     contadorFila++;
                 }
@@ -376,12 +403,320 @@ public class AsientosContablesService {
 
 
     }
+    @Transactional
+    public ResponseDto cargarArchivoAsientoOldd(MultipartFile file, Long pTipoReporteId, Long pUsuarioId) {
+        ResponseDto res = new ResponseDto();
+        String mensaje = "";
+        List<TablaIntermediaEntity> lstTabInter = new ArrayList<>();
+        List<ColumnasReporteEntity> lstColumnasReporte = new ArrayList<>();
+        int contadorColumna = 0;
+        int contadorFila = 0;
+        Long codRepo = 0L;
+        Long codRamo = 0L;
+        try {
 
+            iAsientoDetDao.deleteAll();
+            iAsientoCabDao.deleteAll();
+            lstColumnasReporte = iColumnasReporteDao.findAll();
+
+            List<ColumnasReporteEntity> lstColumnasPorTipoReporte = lstColumnasReporte.stream().filter(r -> r.getTipoReporteId().equals(pTipoReporteId)).collect(Collectors.toList());
+            if (lstColumnasPorTipoReporte.isEmpty()) {
+                res.setCodigo("1001");
+                res.setMensaje("no existe columnas excel para el reporte de tipo: " + iDominioDao.getDominioByDominioId(pTipoReporteId).get().getDescripcion());
+                return res;
+            }
+
+            InputStream x = file.getInputStream();
+
+            //Create Workbook instance holding reference to .xlsx file
+            XSSFWorkbook workbook = new XSSFWorkbook(x);
+            int cantidadHojas = workbook.getNumberOfSheets();
+            for (int i = 0; i < cantidadHojas; i++) {
+                XSSFSheet sheet = workbook.getSheetAt(i);
+                Iterator<Row> rowIterator = sheet.iterator();
+
+                Row row;
+                contadorFila = 0;
+                List<FilaTablaIntermediaDto> lstFilaTablaIntermediaDto = new ArrayList<>();
+                List<FilaSocioNegocioDto> lstFilaSocioNegocioDto = new ArrayList<>();
+
+                FilaTablaIntermediaDto filaTablaIntermediaDto;
+                FilaSocioNegocioDto filaSocioNegocioDto;
+                codRepo = 0L;
+                while (rowIterator.hasNext()) { // recorre fila
+                    row = rowIterator.next();
+
+                    if (contadorFila == 1) {
+                        try {
+                            codRepo = Math.round(row.getCell(1).getNumericCellValue());
+                            final Long codRepoo = codRepo;
+                            if (lstColumnasPorTipoReporte.stream().filter(r -> r.getCodReporte().equals(codRepoo)).collect(Collectors.toList()).isEmpty()) {
+                                mensaje = mensaje + "PESTAÑA: " + (i + 1) + " codigo de reporte: " + codRepo + " no pertenes al tipo de reporte: " + iDominioDao.getDominioByDominioId(pTipoReporteId).get().getDescripcion() + "\n";
+                                break;
+                            }
+                        } catch (Exception ex) {
+                            //... registrar log
+                            mensaje = mensaje + "PESTAÑA: " + (i + 1) + " no se peude leer el codigo de reporte \n";
+                            break;
+                        }
+                    }
+                    // Obtenemos el iterator que permite recorres todas las celdas de una fila
+                    Iterator<Cell> cellIterator = row.cellIterator();
+                    Cell celda;
+
+                    contadorColumna = 0;
+                    codRamo = 0L;
+                    List<Long> lstCodigoConcepto = new ArrayList<>();
+                    List<String> lstNombreColumnaExcel = new ArrayList<>();
+                    while (cellIterator.hasNext()) { // recorre columna                                                                                                                                while (cellIterator.hasNext()) { // recorre columna
+                        celda = cellIterator.next();
+                        switch (contadorColumna) {
+                            case 0:
+                                if (contadorFila > 3)
+                                    codRamo = Math.round(celda.getNumericCellValue());
+                                break;
+                            case 1:
+                                break;
+                            default:
+                                int columnaExcel = contadorColumna - 1;
+                                if (contadorFila == 3) { // obtiene cod concepto
+                                    lstCodigoConcepto = this.obtieneCodigoConcepto(lstColumnasReporte, columnaExcel, codRepo.intValue());
+                                    for (Long codConcep : lstCodigoConcepto) {
+                                        filaTablaIntermediaDto = new FilaTablaIntermediaDto();
+                                        filaTablaIntermediaDto.setCodigoConcepto(codConcep + "");
+                                        filaTablaIntermediaDto.setColumnaExcel(contadorColumna - 1);
+                                        lstFilaTablaIntermediaDto.add(filaTablaIntermediaDto);
+                                    }
+
+                                    lstNombreColumnaExcel = this.obtieneNombreColumnaExcel(lstColumnasReporte, columnaExcel, codRepo.intValue());
+                                    for (String nombreColumnaExcel : lstNombreColumnaExcel) {
+                                        filaSocioNegocioDto = new FilaSocioNegocioDto();
+                                        filaSocioNegocioDto.setNombreColumnaExcel(nombreColumnaExcel + "");
+                                        filaSocioNegocioDto.setColumnaExcel(contadorColumna - 1);
+                                        lstFilaSocioNegocioDto.add(filaSocioNegocioDto);
+                                    }
+
+                                }
+
+                                boolean existeColumna = !lstColumnasReporte.stream().filter(r -> r.getColummaExcel().intValue() == columnaExcel).collect(Collectors.toList()).isEmpty();
+
+                                if (contadorFila > 3 && existeColumna) { // obtiene monto
+                                    lstCodigoConcepto = this.obtieneCodigoConcepto(lstColumnasReporte, columnaExcel, codRepo.intValue());
+                                    for (Long codConcep : lstCodigoConcepto) {
+                                        String monto = "0";
+                                        try {
+                                            monto = celda.getStringCellValue();
+                                        } catch (Exception ex) {
+
+                                            try{
+                                                monto = celda.getNumericCellValue() + "";
+                                            }catch (Exception e){
+                                                System.out.println(e.toString());
+                                            }
+                                        } finally {
+                                            lstFilaTablaIntermediaDto = this.modificarMonto(lstFilaTablaIntermediaDto, codConcep, monto,columnaExcel);
+                                        }
+
+                                    }
+                                    lstNombreColumnaExcel = this.obtieneNombreColumnaExcel(lstColumnasReporte, columnaExcel, codRepo.intValue());
+                                    for (String nombreColumnaExcel : lstNombreColumnaExcel) {
+                                        String valor = "0";
+                                        try {
+                                            valor = celda.getStringCellValue();
+                                        } catch (Exception ex) {
+                                            try{
+                                                valor = celda.getNumericCellValue() + "";
+                                            }catch (Exception e){
+                                                System.out.println(e.toString());
+                                            }
+
+                                        } finally {
+                                            lstFilaSocioNegocioDto = this.modificarValor(lstFilaSocioNegocioDto, nombreColumnaExcel, valor,columnaExcel);
+                                        }
+                                    }
+                                }
+                        }
+                        contadorColumna++;
+                        System.out.println("columna: " + contadorColumna);
+                    }
+
+
+                    if (lstTabInter.isEmpty()) {
+                        lstTabInter = iTablaIntermediaDao.findAll();
+                    }
+                    if (contadorFila > 3) {
+                        Long codigoRamo = codRamo;
+                        Long codigoRepo = codRepo;
+
+                        List<TablaIntermediaEntity> lstRes = lstTabInter.stream()
+                                .filter(datoIntermedio -> codigoRamo == datoIntermedio.getCodRamo() && codigoRepo == datoIntermedio.getCodReporte())
+                                .collect(Collectors.toList());
+
+                        if (lstRes.isEmpty()) {
+                            mensaje = mensaje + " no existe registros en la tabla intermedia \n ";
+                        }
+                        AsientoCabTemEntity insertCab = generarCabTemEntity(codRepo,codigoRamo,pUsuarioId,pTipoReporteId,file.getOriginalFilename(),lstFilaSocioNegocioDto);
+                        try{
+                            iAsientoCabDao.save(insertCab);
+                        }catch (Exception e){
+                            System.out.println(e.toString());
+                        }
+
+                        List<AsientoDetTemEntity> insertDetList = new ArrayList<>();
+                        AsientoDetTemEntity insertDet;
+                        for (FilaTablaIntermediaDto objFila : lstFilaTablaIntermediaDto) {
+                            String codConcepto = FuncionesGenerales.padLeftZeros(objFila.getCodigoConcepto(), 5);
+                            List<TablaIntermediaEntity> lstRes2 = lstRes.stream().filter(l -> parseInt(codConcepto)==(parseInt(l.getCodigoConcepto()))).collect(Collectors.toList());
+                            if (lstRes2.size() == 1) {
+                                insertDet = new AsientoDetTemEntity();
+                                insertDet.setAsientoCabTemId(insertCab.getAsientoCabTemId());
+                                insertDet.setCodigoConcepto(objFila.getCodigoConcepto());
+                                insertDet.setColumnaExcel(objFila.getColumnaExcel());
+                                insertDet.setAmount(FuncionesGenerales.obtenerMonto(objFila.getMonto()));
+                                insertDet.setEstadoId(1000L);
+                                insertDetList.add(insertDet);
+                            }
+                        }
+                        if (insertDetList.isEmpty()) {
+                            mensaje = mensaje + " no existe asientos para codigo reporte: " + codigoRepo + " y ramo: " + codigoRamo + " \n";
+                        }
+                        try{
+                            iAsientoDetDao.saveAll(insertDetList);
+                        }catch (Exception ex){
+                            System.out.println(ex.toString());
+                        }
+
+                    }
+                    contadorFila++;
+                }
+            }
+
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        res.setCodigo("1000");
+        if (mensaje.isEmpty()) {
+            res.setMensaje("se ha cargado el archivo con exito");
+        } else {
+            res.setMensaje("se ha cargado el archivo con las siguientes observaciones:\n\n " + mensaje);
+        }
+
+        return res;
+
+
+    }
+    private AsientoCabTemEntity generarCabTemEntity (Long codRepo, Long codigoRamo, Long pUsuarioId, Long pTipoReporteId, String nombreArchivo,List<FilaSocioNegocioDto> lstFilaSocioNegocioDto){
+        AsientoCabTemEntity insertCab = new AsientoCabTemEntity();
+        insertCab.setCodReporte(codRepo);
+        insertCab.setCodRamo(codigoRamo);
+        insertCab.setTaxDate("2023-07-07");
+        insertCab.setDueDate("2023-07-07");
+        insertCab.setReferenceDate("2023-07-07");
+        insertCab.setUsuarioRegistroId(pUsuarioId);
+        insertCab.setTipoReporteId(pTipoReporteId);
+        insertCab.setNombreArchivo(nombreArchivo);
+        insertCab.setFechaRegistro(new Date());
+        insertCab.setEstadoId(1000L);
+
+        for (FilaSocioNegocioDto obj  :lstFilaSocioNegocioDto) {
+
+            switch (obj.getNombreColumnaExcel()) {
+                case "TipoDocumento":
+                    insertCab.setTipoDocumento(this.convertirTipoDocParaErp(obj.getValor()!=null?obj.getValor().trim():""));
+                    break;
+                case "NumeroDocumento":
+                    insertCab.setNumeroDocumento(obj.getValor());
+                    break;
+                case "Complemento":
+                    insertCab.setComplemento(obj.getValor());
+                    break;
+                case "Extension":
+                    insertCab.setExtension(obj.getValor()!=null?obj.getValor().trim():"");
+                    break;
+                case "PrimerNombreRazonSocial":
+                    insertCab.setPrimerNombreRazonSocial(obj.getValor());
+                    break;
+                case "SegundoNombre":
+                    insertCab.setSegundoNombre(obj.getValor());
+                    break;
+                case "ApellidoPaterno":
+                    insertCab.setApellidoPaterno(obj.getValor());
+                    break;
+                case "ApellidoMaterno":
+                    insertCab.setApellidoMaterno(obj.getValor());
+                    break;
+                case "ApellidoCasado":
+                    insertCab.setApellidoCasado(obj.getValor());
+                    break;
+                case "GroupCode":
+                    insertCab.setGroupCode(obj.getValor());
+                    break;
+                case "VatGroup":
+                    insertCab.setVatGroup(obj.getValor());
+                    break;
+                case "DebitorAccount":
+                    insertCab.setDebitorAccount(obj.getValor());
+                    break;
+                case "GroupNum":
+                    insertCab.setGroupNum(obj.getValor());
+                    break;
+                case "NumeroSiniestro":
+                    insertCab.setNumeroSiniestro(obj.getValor());
+                    break;
+                case "NumeroPoliza":
+                    insertCab.setNumeroPoliza(obj.getValor());
+                    break;
+                case "MontoSiniestroPagar":
+                    insertCab.setMontoSiniestroPagar(obj.getValor());
+                    break;
+                case "CodigoAutorizacion":
+
+                    insertCab.setCodigoAutorizacion(obj.getValor());
+                    break;
+                case "NroFactura":
+                    insertCab.setNroFactura(obj.getValor());
+                    break;
+                case "SiniestroId":
+                    insertCab.setSiniestroId(obj.getValor());
+                    break;
+            }
+        }
+        return insertCab;
+    }
+    private String convertirTipoDocParaErp (String pTipoDoc){
+        String tipoDoc = "";
+        switch (pTipoDoc) {
+            case "CI":
+                tipoDoc = "1";
+                break;
+            case "CIE":
+                tipoDoc = "2";
+                break;
+            case "NIT":
+                tipoDoc = "5";
+                break;
+        }
+        return tipoDoc;
+    }
+    private List<String> obtieneNombreColumnaExcel(List<ColumnasReporteEntity> lstColumnas, int columnaExcel, int codRepo) {
+        List<String> nombreColumnaExcel = new ArrayList<>();
+        try {
+            for (ColumnasReporteEntity obj : lstColumnas) {
+                if (columnaExcel == obj.getColummaExcel().intValue() && codRepo == obj.getCodReporte() && !obj.getNombreColumnaExcel().equals("")) {
+                    nombreColumnaExcel.add(obj.getNombreColumnaExcel());
+                }
+            }
+            return nombreColumnaExcel;
+        } catch (Exception ex) {
+            return new ArrayList<>();
+        }
+    }
     private List<Long> obtieneCodigoConcepto(List<ColumnasReporteEntity> lstColumnas, int columnaExcel, int codRepo) {
         List<Long> codigoConceptos = new ArrayList<>();
         try {
             for (ColumnasReporteEntity obj : lstColumnas) {
-                if (columnaExcel == obj.getColummaExcel().intValue() && codRepo == obj.getCodReporte()) {
+                if (columnaExcel == obj.getColummaExcel().intValue() && codRepo == obj.getCodReporte() && !obj.getCodConcepto().equals("")) {
                     codigoConceptos.add(obj.getCodConcepto());
                 }
             }
@@ -391,12 +726,26 @@ public class AsientosContablesService {
         }
     }
 
-    private List<FilaTablaIntermediaDto> modificarMonto(List<FilaTablaIntermediaDto> lst, Long codConcepto, String monto) {
+    private List<FilaTablaIntermediaDto> modificarMonto(List<FilaTablaIntermediaDto> lst, Long codConcepto, String monto, int columnaExcel) {
         List<FilaTablaIntermediaDto> lstModificado = new ArrayList<>();
         try {
             for (FilaTablaIntermediaDto obj : lst) {
-                if (obj.getCodigoConcepto().equals(codConcepto + "")) {
+                if (obj.getCodigoConcepto().equals(codConcepto + "") && obj.getColumnaExcel()==columnaExcel) {
                     obj.setMonto(monto);
+                }
+                lstModificado.add(obj);
+            }
+            return lstModificado;
+        } catch (Exception ex) {
+            return lst;
+        }
+    }
+    private List<FilaSocioNegocioDto> modificarValor(List<FilaSocioNegocioDto> lst, String nombreColumnaExcel, String valor, int columnaExcel) {
+        List<FilaSocioNegocioDto> lstModificado = new ArrayList<>();
+        try {
+            for (FilaSocioNegocioDto obj : lst) {
+                if (obj.getNombreColumnaExcel().equals(nombreColumnaExcel + "") && obj.getColumnaExcel()==columnaExcel) {
+                    obj.setValor(valor);
                 }
                 lstModificado.add(obj);
             }
@@ -461,13 +810,36 @@ public class AsientosContablesService {
                 objRamoDto.setCodReporte(new Long(obj[1] + ""));
                 objRamoDto.setCodRamo(new Long(obj[2] + ""));
                 objRamoDto.setRamo(obj[3] + "");
-                objRamoDto.setTaxDate(obj[4] + "");
-                objRamoDto.setDueDate(obj[5] + "");
-                objRamoDto.setReferenceDate(obj[6] + "");
-                objRamoDto.setNroasientoSap(obj[7] + "");
-                objRamoDto.setJsonEnviadoSap(obj[8] + "");
-                objRamoDto.setJsonRespuestaSap(obj[9] + "");
+
+                objRamoDto.setTipoDocumento(obj[4] + "");
+                objRamoDto.setNumeroDocumento(obj[5] + "");
+                objRamoDto.setComplemento(obj[6] + "");
+                objRamoDto.setExtension(obj[7] + "");
+                objRamoDto.setPrimerNombreRazonSocial(obj[8] + "");
+                objRamoDto.setSegundoNombre(obj[9] + "");
+                objRamoDto.setApellidoPaterno(obj[10] + "");
+                objRamoDto.setApellidoMaterno(obj[11] + "");
+                objRamoDto.setApellidoCasado(obj[12] + "");
+                objRamoDto.setGroupCode(obj[13] + "");
+                objRamoDto.setVatGroup(obj[14] + "");
+                objRamoDto.setDebitorAccount(obj[15] + "");
+                objRamoDto.setGroupNum(obj[16] + "");
+                objRamoDto.setNumeroSiniestro(obj[17] + "");
+                objRamoDto.setNumeroPoliza(obj[18] + "");
+                objRamoDto.setMontoSiniestroPagar(obj[19] + "");
+                objRamoDto.setCodigoAutorizacion(obj[20] + "");
+                objRamoDto.setNroFactura(obj[21] + "");
+                objRamoDto.setSiniestroId(obj[22] + "");
+                objRamoDto.setTaxDate(obj[23] + "");
+                objRamoDto.setDueDate(obj[24] + "");
+                objRamoDto.setReferenceDate(obj[25] + "");
+                objRamoDto.setNroasientoSap(obj[26] + "");
+                objRamoDto.setJsonEnviadoSap(obj[27] + "");
+                objRamoDto.setJsonRespuestaSap(obj[28] + "");
+                objRamoDto.setTipoReporteId(new Long(obj[29] + ""));
+                objRamoDto.setNombreArchivo(obj[30] + "");
                 lstRamoDto.add(objRamoDto);
+
             }
 
             res.setCodigo("1000");
@@ -524,7 +896,7 @@ public class AsientosContablesService {
 
     }
 
-    public ResponseDto enviarErpAsientoContable(ResponseDto res, RequestAsientoDto req) {
+    public ResponseDto enviarErpAsientoContable(Long pTipoReporteId,ResponseDto res, RequestAsientoDto req) {
         try {
             Map<String, Object> asiento = req.getAsiento();
             if (!res.getCodigo().equals("1000")) {
@@ -532,7 +904,10 @@ public class AsientosContablesService {
             }
             String token = (String) res.getElementoGenerico();
             Gson g = new Gson();
-            res = envioAsientoRestTemplate.enviarErpAsientoContable(token, asiento);
+            String endPoint = "/JournalEntry/GuardarAsiento";
+            if(pTipoReporteId==1042)
+                endPoint = "/Payment/GuardarPago";
+            res = envioAsientoRestTemplate.enviarErpAsientoContable(endPoint,token, asiento);
             Optional<AsientoCabTemEntity> obj = iAsientoCabDao.findById(req.getAsientoCabTemId());
             Optional<ViewReporteEntity> objRep = iViewReporteDao.findById(obj.get().getCodReporte());
             Optional<ViewRamoEntity> objRamo = iViewRamoDao.findById(obj.get().getCodRamo());
